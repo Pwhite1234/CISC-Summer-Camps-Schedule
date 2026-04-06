@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CISC 2026 Summer Staff Scheduler</title>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f4;
+    --bg-tertiary: #f0ede8;
+    --bg-info: #e6f1fb;
+    --bg-danger: #fcebeb;
+    --bg-success: #eaf3de;
+    --bg-warning: #faeeda;
+    --text-primary: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --text-info: #0c447c;
+    --text-danger: #791f1f;
+    --text-success: #27500a;
+    --text-warning: #633806;
+    --border-tertiary: rgba(26,26,24,0.12);
+    --border-secondary: rgba(26,26,24,0.25);
+    --border-primary: rgba(26,26,24,0.35);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --bg-tertiary: #242422;
+      --bg-info: #0c2a4a;
+      --bg-danger: #3a1010;
+      --bg-success: #142808;
+      --bg-warning: #3a2004;
+      --text-primary: #f0ede8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --text-info: #85b7eb;
+      --text-danger: #f09595;
+      --text-success: #97c459;
+      --text-warning: #fac775;
+      --border-tertiary: rgba(240,237,232,0.12);
+      --border-secondary: rgba(240,237,232,0.25);
+      --border-primary: rgba(240,237,232,0.35);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg-tertiary); color: var(--text-primary); min-height: 100vh; }
+  .toolbar { display: flex; align-items: center; gap: 7px; padding: 9px 14px; flex-wrap: wrap; border-bottom: 0.5px solid var(--border-tertiary); background: var(--bg-primary); position: sticky; top: 0; z-index: 20; }
+  .toolbar-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+  .tbtn { font-size: 11px; padding: 4px 9px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; height: 28px; white-space: nowrap; }
+  .tbtn:hover { background: var(--bg-secondary); }
+  .tbtn.primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .tbtn.success { background: #3B6D11; color: #fff; border-color: #3B6D11; }
+  .tbtn.danger-btn { border-color: #E24B4A; color: #A32D2D; }
+  .tbtn.danger-btn:hover { background: var(--bg-danger); }
+  .tbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .lock-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; padding: 4px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-secondary); cursor: pointer; height: 28px; white-space: nowrap; user-select: none; }
+  .lock-badge.locked { background: var(--bg-danger); color: var(--text-danger); border-color: #E24B4A; }
+  .lock-badge.unlocked { background: var(--bg-success); color: var(--text-success); border-color: #3B6D11; }
+  .conflict-banner { background: var(--bg-warning); border-bottom: 0.5px solid #BA7517; padding: 6px 14px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-warning); flex-wrap: wrap; }
+  .conflict-banner b { font-weight: 600; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 14px; background: var(--bg-primary); border-bottom: 0.5px solid var(--border-tertiary); }
+  .leg-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-secondary); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .main-layout { display: flex; min-height: calc(100vh - 120px); }
+  .sidebar { width: 200px; min-width: 180px; border-right: 0.5px solid var(--border-tertiary); background: var(--bg-primary); display: flex; flex-direction: column; position: sticky; top: 95px; height: calc(100vh - 95px); overflow: hidden; }
+  .sidebar-header { padding: 9px 11px 6px; border-bottom: 0.5px solid var(--border-tertiary); }
+  .sidebar-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+  .sidebar-search { font-size: 11px; padding: 4px 7px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); width: 100%; background: var(--bg-primary); color: var(--text-primary); }
+  .sf-pills { display: flex; gap: 3px; flex-wrap: wrap; padding: 5px 11px; border-bottom: 0.5px solid var(--border-tertiary); }
+  .sf-pill { font-size: 10px; padding: 2px 6px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border-secondary); background: var(--bg-secondary); color: var(--text-secondary); white-space: nowrap; }
+  .sf-pill.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .sidebar-list { flex: 1; overflow-y: auto; padding: 5px 7px; display: flex; flex-direction: column; gap: 2px; }
+  .drag-chip { display: flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: grab; border: 0.5px solid transparent; user-select: none; transition: opacity .1s, transform .1s; }
+  .drag-chip.locked-mode { cursor: default; }
+  .drag-chip:hover:not(.locked-mode) { opacity: .82; transform: scale(1.01); }
+  .drag-chip.dragging { opacity: .35; }
+  .drag-chip.placed { opacity: .5; }
+  .cbadge { font-size: 9px; background: rgba(0,0,0,.15); border-radius: 20px; padding: 1px 4px; flex-shrink: 0; }
+  .cfbadge { font-size: 9px; background: #E24B4A; color: #fff; border-radius: 20px; padding: 1px 4px; flex-shrink: 0; }
+  .sidebar-hint { font-size: 10px; color: var(--text-tertiary); padding: 6px 11px; text-align: center; border-top: 0.5px solid var(--border-tertiary); }
+  .content-area { flex: 1; display: flex; flex-direction: column; }
+  .week-tabs { display: flex; gap: 3px; padding: 9px 14px 0; flex-wrap: wrap; background: var(--bg-tertiary); }
+  .wtab { font-size: 11px; padding: 5px 12px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); cursor: pointer; background: var(--bg-primary); color: var(--text-secondary); }
+  .wtab.active { background: #185FA5; color: #fff; border-color: #185FA5; font-weight: 600; }
+  .wtab:hover:not(.active) { background: var(--bg-secondary); }
+  .wtab .wbadge { background: #E24B4A; color: #fff; border-radius: 20px; padding: 1px 5px; font-size: 10px; margin-left: 3px; }
+  .camps-area { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .camp-card { background: var(--bg-primary); border: 0.5px solid var(--border-tertiary); border-radius: var(--radius-lg); overflow: hidden; }
+  .camp-card.has-conflict { border-color: #E24B4A; border-width: 1px; }
+  .camp-header { padding: 9px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 0.5px solid var(--border-tertiary); }
+  .type-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .camp-title { font-size: 13px; font-weight: 600; flex: 1; min-width: 120px; }
+  .camp-meta { font-size: 10px; color: var(--text-secondary); }
+  .camp-actions { display: flex; gap: 5px; align-items: center; }
+  .camp-body { padding: 9px 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .role-section { flex: 1; min-width: 115px; }
+  .role-label { font-size: 10px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+  .staff-slots { display: flex; flex-direction: column; gap: 3px; }
+  .drop-slot { min-height: 26px; border-radius: 20px; border: 0.5px dashed var(--border-tertiary); padding: 2px 9px; display: flex; align-items: center; font-size: 10px; color: var(--text-tertiary); cursor: pointer; transition: all .12s; white-space: nowrap; }
+  .drop-slot:hover { border-color: #185FA5; color: #185FA5; background: #E6F1FB; }
+  .drop-slot.drag-over { border-color: #185FA5; background: #E6F1FB; border-style: solid; color: #185FA5; }
+  .drop-slot.drag-over-conflict { border-color: #E24B4A; background: #FCEBEB; border-style: solid; color: #A32D2D; }
+  .filled-slot { display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 0.5px solid transparent; cursor: grab; user-select: none; min-height: 26px; transition: all .1s; }
+  .filled-slot.locked-mode { cursor: default; }
+  .filled-slot.dragging { opacity: .35; }
+  .filled-slot.conflict-chip { border-color: #E24B4A !important; background: #FCEBEB !important; color: #791F1F !important; }
+  .filled-slot .rm { font-size: 9px; opacity: .45; cursor: pointer; flex-shrink: 0; margin-left: 2px; }
+  .filled-slot .rm:hover { opacity: 1; }
+  .filled-slot .rm.locked-rm { pointer-events: none; opacity: .2; }
+  .slot-add-row { display: flex; gap: 4px; margin-top: 3px; }
+  .add-btn { font-size: 10px; color: var(--text-tertiary); border: 0.5px dashed var(--border-tertiary); border-radius: 20px; padding: 2px 7px; cursor: pointer; background: none; white-space: nowrap; }
+  .add-btn:hover { border-color: var(--border-secondary); color: var(--text-secondary); }
+  .add-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .notes-ta { font-size: 10px; padding: 4px 7px; border: 0.5px dashed var(--border-tertiary); border-radius: 6px; background: transparent; color: var(--text-secondary); width: 100%; resize: none; font-family: var(--font); min-width: 90px; }
+  .notes-ta:focus { outline: none; border-color: var(--border-secondary); }
+  .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.42); display: flex; align-items: flex-start; justify-content: center; z-index: 100; overflow-y: auto; padding: 40px 16px; }
+  .modal { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border-secondary); padding: 20px; width: 360px; max-height: 85vh; display: flex; flex-direction: column; gap: 11px; }
+  .modal.wide { width: 480px; }
+  .modal h3 { font-size: 15px; font-weight: 600; }
+  .msearch { font-size: 12px; padding: 7px 10px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); width: 100%; background: var(--bg-primary); color: var(--text-primary); }
+  .role-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .role-pill { font-size: 10px; padding: 2px 7px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--border-secondary); background: var(--bg-secondary); color: var(--text-secondary); }
+  .role-pill.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .mlist { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 2px; max-height: 340px; }
+  .sopt { font-size: 12px; padding: 7px 9px; border-radius: var(--radius-md); cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  .sopt:hover { background: var(--bg-secondary); }
+  .sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .mactions { display: flex; gap: 7px; justify-content: flex-end; padding-top: 8px; border-top: 0.5px solid var(--border-tertiary); }
+  .mactions button { font-size: 12px; padding: 6px 14px; border-radius: var(--radius-md); cursor: pointer; border: 0.5px solid var(--border-secondary); background: var(--bg-primary); color: var(--text-primary); }
+  .mactions button.primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .mactions button.success { background: #3B6D11; color: #fff; border-color: #3B6D11; }
+  .mactions button:hover:not(.primary):not(.success) { background: var(--bg-secondary); }
+  .pin-dots { display: flex; gap: 12px; justify-content: center; margin: 8px 0; }
+  .pin-dot { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--border-secondary); background: var(--bg-secondary); transition: background .15s; }
+  .pin-dot.filled { background: #185FA5; border-color: #185FA5; }
+  .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pin-key { padding: 14px; border-radius: var(--radius-md); border: 0.5px solid var(--border-secondary); font-size: 18px; font-weight: 500; cursor: pointer; text-align: center; background: var(--bg-primary); color: var(--text-primary); }
+  .pin-key:hover { background: var(--bg-secondary); }
+  .pin-error { font-size: 12px; color: #A32D2D; text-align: center; background: #FCEBEB; border-radius: var(--radius-md); padding: 6px; }
+  .week-row { padding: 8px 10px; border-radius: var(--radius-md); border: 0.5px solid var(--border-tertiary); margin-bottom: 5px; }
+  .week-row-title { font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+  .camp-row { font-size: 11px; color: var(--text-secondary); padding: 2px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .conflict-tag { font-size: 10px; background: #FCEBEB; color: #A32D2D; border-radius: 20px; padding: 1px 6px; font-weight: 600; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .staff-card-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 0.5px solid var(--border-tertiary); cursor: pointer; }
+  .staff-card-row:hover { background: var(--bg-secondary); }
+  .staff-card-row:last-child { border-bottom: none; }
+  .import-example { font-size: 11px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 8px 10px; color: var(--text-tertiary); font-family: monospace; }
+  .email-list { max-height: 180px; overflow-y: auto; border: 0.5px solid var(--border-tertiary); border-radius: var(--radius-md); }
+  .email-row { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 0.5px solid var(--border-tertiary); font-size: 11px; }
+  .email-row:last-child { border-bottom: none; }
+  select.msearch { appearance: auto; }
+  @media (max-width: 680px) {
+    .sidebar { display: none; }
+    .toolbar-title { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const RC = {
+  'Part Time':    { bg: '#E6F1FB', text: '#0C447C', dot: '#185FA5' },
+  'Full Time':    { bg: '#EAF3DE', text: '#27500A', dot: '#3B6D11' },
+  'Director':     { bg: '#EEEDFE', text: '#3C3489', dot: '#534AB7' },
+  'Administrator':{ bg: '#FAEEDA', text: '#633806', dot: '#BA7517' }
+};
+const TC = {
+  'Community Camp':             { bg: '#B5D4F4', text: '#042C53' },
+  'CISC Summer Soccer Camp':    { bg: '#9FE1CB', text: '#04342C' },
+  'Shooting & Finishing Camp':  { bg: '#F5C4B3', text: '#4A1B0C' },
+  'GK Camp':                    { bg: '#F4C0D1', text: '#4B1528' },
+  'GA Girls':                   { bg: '#FAC775', text: '#412402' },
+  'Boys MLS Next Camp':         { bg: '#C0DD97', text: '#173404' },
+  'Community Camp / Mini Camp': { bg: '#B5D4F4', text: '#042C53' }
+};
+const SG = { directors: 'Director', admins: 'Administrator', coaches: 'Coach' };
+
+const STAFF = [
+  {name:'Abby Clark',role:'Part Time'},{name:'Blake Ormand',role:'Part Time'},{name:'Brandon Evelyn',role:'Part Time'},
+  {name:'Brandon Thompson',role:'Part Time'},{name:'Briton Warham',role:'Part Time'},{name:'Camilo Gonzalez',role:'Part Time'},
+  {name:'Carlos Roman',role:'Part Time'},{name:'Caroline Jackson',role:'Part Time'},{name:'Carson Hamner',role:'Part Time'},
+  {name:'Colson Goldstein',role:'Part Time'},{name:'David Mason',role:'Part Time'},{name:'Ellie Shields',role:'Part Time'},
+  {name:'Emma Clare Nock',role:'Part Time'},{name:'Esteban Clemente',role:'Part Time'},{name:'Grace Kessler',role:'Part Time'},
+  {name:'Gus Katinas',role:'Part Time'},{name:'Hannah Nerdinsky',role:'Part Time'},{name:'Johnny Thyne',role:'Part Time'},
+  {name:'Jordan Skinner',role:'Part Time'},{name:'Kalla Stark',role:'Part Time'},{name:'Leah Edwards',role:'Part Time'},
+  {name:'Luke Kosicki',role:'Part Time'},{name:'Lydia Matera',role:'Part Time'},{name:'Mackenzie Thornton',role:'Part Time'},
+  {name:'Marley Thompson',role:'Part Time'},{name:'Matt Chartier',role:'Part Time'},{name:'Matt Spear',role:'Part Time'},
+  {name:'Mckinley Munro',role:'Part Time'},{name:'Nash Beshears',role:'Part Time'},{name:'Robin Agurkis',role:'Part Time'},
+  {name:'Samantha Riley',role:'Part Time'},{name:'Stella Figenholtz',role:'Part Time'},{name:'Taylor Cabaniss',role:'Part Time'},
+  {name:'William Beecham',role:'Part Time'},{name:'Zach Salgado',role:'Part Time'},{name:'Zakaria Benzit',role:'Part Time'},
+  {name:'Zoey Boukedes',role:'Part Time'},{name:'Ciara Barnes',role:'Part Time'},
+  {name:'Ale Marin',role:'Full Time'},{name:'Andrew Ward',role:'Full Time'},{name:'Bailey Cullen',role:'Full Time'},
+  {name:'Barry Slagle',role:'Full Time'},{name:'Brian Udy',role:'Full Time'},{name:'Carlos Martinez',role:'Full Time'},
+  {name:'Chris Huddy',role:'Full Time'},{name:'Colin Gibson',role:'Full Time'},{name:'Cory Munro',role:'Full Time'},
+  {name:'Garrett Langley',role:'Full Time'},{name:'John Cullen',role:'Full Time'},{name:'Kevin Vasquez',role:'Full Time'},
+  {name:'Luis Echeverry',role:'Full Time'},{name:'Maria Subies Forcada',role:'Full Time'},{name:'Matt Brown',role:'Full Time'},
+  {name:'Blake Ellis',role:'Full Time'},{name:'Neil Roberts',role:'Full Time'},{name:'Rapha Fernandes',role:'Full Time'},
+  {name:'Rhem Stubbs',role:'Full Time'},{name:'Susie Morris',role:'Full Time'},{name:'Tatum Bourque',role:'Full Time'},
+  {name:'Thomas Finlay',role:'Full Time'},{name:'Tom McEnery',role:'Full Time'},{name:'Tristen Moeller',role:'Full Time'},
+  {name:'Allen Bornkamp',role:'Full Time'},{name:'Nick Fusco',role:'Full Time'},{name:'Jay Lockhart',role:'Full Time'},
+  {name:'Brooke Bingham',role:'Full Time'},{name:'Darren Warham',role:'Full Time'},{name:'Greg Ashton',role:'Full Time'},
+  {name:'Mike Barroqueiro',role:'Full Time'},{name:'Jeff Bilyk',role:'Full Time'},{name:'Bobby Rosario',role:'Full Time'},
+  {name:'Jackson Brandwene',role:'Full Time'},{name:'Tony Falvino',role:'Full Time'},
+  {name:'Molly Deal',role:'Administrator'},{name:'Terina Cullen',role:'Administrator'},{name:'Ellen Fiori',role:'Administrator'},
+  {name:'Brian Martinez',role:'Administrator'},{name:'Debbie Brooks',role:'Administrator'},{name:'Brittany Brown',role:'Administrator'},
+  {name:'Sarah Oechslin',role:'Administrator'},{name:'Horacio Valasco Guerrero',role:'Administrator'},{name:'Nate Friefeld',role:'Administrator'}
+];
+
+const CAMPS = [
+  {week:1,program:'Community Camp',location:'Talbert',dates:'June 8–12, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Talbert',directors:1,admins:1,coaches:2},
+  {week:1,program:'CISC Summer Soccer Camp',location:'Tega Cay',dates:'June 8–12, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Catawba Park',directors:1,admins:1,coaches:4},
+  {week:2,program:'GA Girls',location:'Tega Cay',dates:'June 15–18, 2026',days:'Mon–Thu',times:'8:30–10:30 AM',venue:'Catawba Park',directors:1,admins:1,coaches:4},
+  {week:2,program:'Boys MLS Next Camp',location:'Rock Hill',dates:'June 15–18, 2026',days:'Mon–Thu',times:'8:30–10:30 AM',venue:'Manchester Meadows',directors:1,admins:1,coaches:4},
+  {week:2,program:'CISC Summer Soccer Camp',location:'Rock Hill',dates:'June 15–19, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Manchester Meadows',directors:1,admins:1,coaches:5},
+  {week:2,program:'CISC Summer Soccer Camp',location:'Huntersville/Cornelius/Davidson',dates:'June 15–19, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bradford Park',directors:1,admins:1,coaches:5},
+  {week:2,program:'Community Camp',location:'Davidson',dates:'June 15–19, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'River Run',directors:1,admins:1,coaches:4},
+  {week:2,program:'Community Camp',location:'Fort Mill',dates:'June 15–18, 2026',days:'Mon–Thu',times:'9–12 PM',venue:'Comporium',directors:1,admins:1,coaches:4},
+  {week:2,program:'Community Camp',location:'Huntersville',dates:'June 15–19, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Huntersville Rec Center',directors:1,admins:1,coaches:6},
+  {week:3,program:'GA Girls',location:'Huntersville',dates:'June 22–25, 2026',days:'Mon–Thu',times:'8:30–10:30 AM',venue:'Bradford Park',directors:1,admins:1,coaches:4},
+  {week:3,program:'Boys MLS Next Camp',location:'Huntersville',dates:'June 22–25, 2026',days:'Mon–Thu',times:'8:30–10:30 AM',venue:'RBP',directors:1,admins:1,coaches:4},
+  {week:3,program:'CISC Summer Soccer Camp',location:'Huntersville',dates:'June 22–26, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'RBP',directors:1,admins:1,coaches:6},
+  {week:3,program:'CISC Summer Soccer Camp (Luis)',location:'Matthews',dates:'June 22–26, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Matthews Sportsplex',directors:1,admins:1,coaches:5},
+  {week:3,program:'GK Camp (Matt)',location:'Matthews',dates:'June 22–26, 2026',days:'Mon–Fri',times:'8:30–10:30 AM',venue:'Matthews Sportsplex',directors:1,admins:1,coaches:2},
+  {week:3,program:'CISC Summer Soccer Camp',location:'Tega Cay',dates:'June 22–26, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Catawba Park',directors:1,admins:1,coaches:6},
+  {week:3,program:'CISC Summer Soccer Camp',location:'Mooresville',dates:'June 22–26, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Mazeppa Park',directors:1,admins:1,coaches:4},
+  {week:3,program:'Community Camp',location:'Cornelius',dates:'June 22–26, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bailey Rd Park',directors:1,admins:1,coaches:5},
+  {week:4,program:'CISC Summer Soccer Camp',location:'Huntersville',dates:'July 6–10, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'RBP',directors:1,admins:1,coaches:5},
+  {week:4,program:'CISC Summer Soccer Camp',location:'Rock Hill',dates:'July 6–10, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Manchester Meadows',directors:1,admins:1,coaches:5},
+  {week:4,program:'Shooting & Finishing Camp',location:'Mooresville',dates:'July 6–10, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Mazeppa Park',directors:1,admins:1,coaches:4},
+  {week:4,program:'GK Camp',location:'Mooresville',dates:'July 6–10, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Mazeppa Park',directors:1,admins:1,coaches:2},
+  {week:4,program:'Community Camp',location:'Cornelius',dates:'July 6–10, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bailey Rd Park',directors:1,admins:1,coaches:6},
+  {week:5,program:'Shooting & Finishing Camp',location:'Huntersville',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'RBP',directors:1,admins:1,coaches:6},
+  {week:5,program:'GK Camp',location:'Huntersville',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'RBP',directors:1,admins:1,coaches:4},
+  {week:5,program:'Shooting & Finishing Camp',location:'Rock Hill',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Manchester Meadows',directors:1,admins:1,coaches:6},
+  {week:5,program:'GK Camp',location:'Rock Hill',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Manchester Meadows',directors:1,admins:1,coaches:3},
+  {week:5,program:'Community Camp',location:'Davidson',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'River Run',directors:1,admins:1,coaches:4},
+  {week:5,program:'Community Camp',location:'Fort Mill',dates:'July 13–16, 2026',days:'Mon–Thu',times:'9–12 PM',venue:'Comporium',directors:1,admins:1,coaches:4},
+  {week:5,program:'Community Camp',location:'Huntersville',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Huntersville Rec Center',directors:1,admins:1,coaches:5},
+  {week:5,program:'Community Camp',location:'Talbert',dates:'July 13–17, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Talbert',directors:1,admins:1,coaches:2},
+  {week:6,program:'CISC Summer Soccer Camp',location:'Tega Cay',dates:'July 20–24, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Catawba Park',directors:1,admins:1,coaches:5},
+  {week:6,program:'CISC Summer Soccer Camp',location:'Mooresville',dates:'July 20–24, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Mazeppa Park',directors:1,admins:1,coaches:4},
+  {week:6,program:'CISC Summer Soccer Camp',location:'Huntersville/Cornelius/Davidson',dates:'July 20–24, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bradford Park',directors:1,admins:1,coaches:6},
+  {week:6,program:'Community Camp / Mini Camp',location:'Cornelius',dates:'July 20–24, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bailey Rd Park',directors:1,admins:1,coaches:5},
+  {week:7,program:'Community Camp',location:'Talbert',dates:'July 27–31, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Talbert',directors:1,admins:1,coaches:2},
+  {week:7,program:'Community Camp',location:'Huntersville',dates:'July 27–31, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Huntersville Athletic Park',directors:1,admins:1,coaches:5},
+  {week:7,program:'Community Camp',location:'Cornelius',dates:'July 27–31, 2026',days:'Mon–Fri',times:'9–12 PM',venue:'Bailey Rd Park',directors:1,admins:1,coaches:5}
+];
+
+const PIN = '1234';
+const STORAGE_KEY = 'cisc2026_scheduler_v1';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let S = {
+  week: 1,
+  staffList: [...STAFF],
+  assignments: {},
+  slotCounts: {},
+  notes: {},
+  emails: {},
+  modal: null,
+  sbSearch: '',
+  sbFilter: '',
+  drag: null,
+  locked: true,
+  pinBuffer: '',
+  pinError: ''
+};
+
+// ── Persistence ────────────────────────────────────────────────────────────────
+function saveState() {
+  try {
+    const toSave = {
+      staffList: S.staffList,
+      assignments: S.assignments,
+      slotCounts: S.slotCounts,
+      notes: S.notes,
+      emails: S.emails
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.staffList)   S.staffList   = saved.staffList;
+    if (saved.assignments) S.assignments = saved.assignments;
+    if (saved.slotCounts)  S.slotCounts  = saved.slotCounts;
+    if (saved.notes)       S.notes       = saved.notes;
+    if (saved.emails)      S.emails      = saved.emails;
+  } catch(e) {}
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function ck(c) { return 'w' + c.week + '_' + c.program + '_' + c.location; }
+function sk(k, rt, i) { return k + '__' + rt + '__' + i; }
+function getA(k, rt, i) { return S.assignments[sk(k, rt, i)] || null; }
+function setA(k, rt, i, n) { S.assignments[sk(k, rt, i)] = n; saveState(); }
+function delA(k, rt, i) { delete S.assignments[sk(k, rt, i)]; saveState(); }
+function getCount(k, rt, base) { return S.slotCounts[k + '__' + rt] !== undefined ? S.slotCounts[k + '__' + rt] : base; }
+function setCount(k, rt, n) { S.slotCounts[k + '__' + rt] = n; saveState(); }
+function getRole(name) { const s = S.staffList.find(x => x.name === name); return s ? s.role : 'Part Time'; }
+function sc(name) { return RC[getRole(name)] || RC['Part Time']; }
+function e(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function campCount(name) {
+  const keys = new Set();
+  for (const [k, n] of Object.entries(S.assignments)) { if (n === name) { keys.add(k.split('__')[0]); } }
+  return keys.size;
+}
+function assignedThisWeek(name) {
+  for (const [k, n] of Object.entries(S.assignments)) {
+    if (n !== name) continue;
+    const c = CAMPS.find(x => ck(x) === k.split('__')[0]);
+    if (c && c.week === S.week) return true;
+  }
+  return false;
+}
+function getConflictsForWeek(week) {
+  const map = {};
+  for (const [k, name] of Object.entries(S.assignments)) {
+    if (!name) continue;
+    const p = k.split('__');
+    const c = CAMPS.find(x => ck(x) === p[0]);
+    if (!c || c.week !== week) continue;
+    if (!map[name]) map[name] = [];
+    map[name].push(p[0]);
+  }
+  const out = {};
+  for (const [name, keys] of Object.entries(map)) {
+    const u = [...new Set(keys)];
+    if (u.length > 1) out[name] = u;
+  }
+  return out;
+}
+function getAllConflicts() {
+  const all = {};
+  for (let w = 1; w <= 7; w++) {
+    for (const [name, keys] of Object.entries(getConflictsForWeek(w))) {
+      if (!all[name]) all[name] = [];
+      all[name].push({ week: w, campKeys: keys });
+    }
+  }
+  return all;
+}
+function isConflicted(name, campKey, week) {
+  const c = getConflictsForWeek(week);
+  return !!(c[name] && c[name].includes(campKey));
+}
+function getStaffSchedule(name) {
+  const bw = {};
+  for (const [k, n] of Object.entries(S.assignments)) {
+    if (n !== name) continue;
+    const p = k.split('__');
+    const c = CAMPS.find(x => ck(x) === p[0]);
+    if (!c) continue;
+    if (!bw[c.week]) bw[c.week] = [];
+    const ex = bw[c.week].find(x => x.campKey === p[0]);
+    if (ex) ex.roles.push(p[1]);
+    else bw[c.week].push({ camp: c, roles: [p[1]], campKey: p[0] });
+  }
+  return bw;
+}
+
+// ── Export / Print ─────────────────────────────────────────────────────────────
+function exportCSV(mode) {
+  let rows = [['Week','Program','Location','Venue','Dates','Days','Times','Role','Staff Name','Email']];
+  const list = mode === 'week' ? CAMPS.filter(c => c.week === S.week) : CAMPS;
+  list.forEach(camp => {
+    const key = ck(camp);
+    ['directors','admins','coaches'].forEach(rt => {
+      const base = camp[rt === 'directors' ? 'directors' : rt === 'admins' ? 'admins' : 'coaches'];
+      const cnt = getCount(key, rt, base);
+      for (let i = 0; i < cnt; i++) {
+        const n = getA(key, rt, i) || '(open)';
+        rows.push([camp.week, camp.program, camp.location, camp.venue, camp.dates, camp.days, camp.times, SG[rt], n, S.emails[n] || '']);
+      }
+    });
+  });
+  const csv = rows.map(r => r.map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = mode === 'week' ? `CISC_Week${S.week}_2026.csv` : 'CISC_Full_2026.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function doPrint(mode) {
+  const list = mode === 'week' ? CAMPS.filter(c => c.week === S.week) : CAMPS;
+  let html = `<html><head><title>CISC 2026 Schedule</title><style>
+    body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#000}
+    h1{font-size:18px;margin-bottom:4px}h2{font-size:14px;margin:16px 0 6px;border-bottom:1px solid #ccc;padding-bottom:4px}
+    .card{border:1px solid #ccc;border-radius:6px;margin-bottom:10px;page-break-inside:avoid}
+    .ch{padding:7px 10px;background:#f5f5f5;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .cb{padding:7px 10px;display:flex;gap:14px;flex-wrap:wrap}
+    .rs{min-width:120px;flex:1}.rl{font-size:10px;font-weight:bold;color:#666;text-transform:uppercase;margin-bottom:4px}
+    .chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold;margin:1px 2px;border:1px solid #ccc}
+    .open{color:#999;font-style:italic}.cf{border-color:#E24B4A!important;color:#A32D2D!important}
+    @media print{body{padding:10px}.no-print{display:none}}
+  </style></head><body>`;
+  html += `<h1>CISC 2026 Summer Staff Schedule</h1><p style="color:#666;font-size:11px;margin-bottom:12px">Generated ${new Date().toLocaleDateString()}</p>`;
+  [...new Set(list.map(c => c.week))].forEach(w => {
+    html += `<h2>Week ${w}</h2>`;
+    list.filter(c => c.week === w).forEach(camp => {
+      const key = ck(camp);
+      html += `<div class="card"><div class="ch"><b>${camp.program}</b><span>${camp.location} — ${camp.venue}</span><span style="color:#666">${camp.dates} &bull; ${camp.days} &bull; ${camp.times}</span></div><div class="cb">`;
+      [{rt:'directors',base:camp.directors},{rt:'admins',base:camp.admins},{rt:'coaches',base:camp.coaches}].forEach(({rt,base}) => {
+        const cnt = getCount(key, rt, base);
+        html += `<div class="rs"><div class="rl">${SG[rt]}s</div>`;
+        for (let i = 0; i < cnt; i++) {
+          const n = getA(key, rt, i);
+          if (n) { const cf = isConflicted(n, key, camp.week); html += `<span class="chip${cf?' cf':''}">${n}${cf?' ⚠':''}</span>`; }
+          else html += `<span class="open">(open) </span>`;
+        }
+        html += `</div>`;
+      });
+      const note = S.notes[key + '_note'];
+      if (note) html += `<div class="rs"><div class="rl">Notes</div><div style="font-size:11px;color:#555">${note}</div></div>`;
+      html += `</div></div>`;
+    });
+  });
+  html += `</body></html>`;
+  const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.print();
+}
+
+function openStaffPage(name) {
+  const sched = getStaffSchedule(name);
+  const role = getRole(name);
+  const c = RC[role] || RC['Part Time'];
+  const initials = name.split(' ').map(x => x[0]).slice(0, 2).join('');
+  const email = S.emails[name];
+  let body = `<html><head><title>${name} – CISC 2026</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    body{font-family:-apple-system,Arial,sans-serif;max-width:620px;margin:40px auto;padding:0 20px;color:#222;background:#fafafa}
+    h1{font-size:22px;margin-bottom:2px}
+    .sub{font-size:13px;color:#666;margin-bottom:24px}
+    .avatar{width:52px;height:52px;border-radius:50%;background:${c.bg};color:${c.text};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;flex-shrink:0}
+    .header-row{display:flex;align-items:center;gap:14px;margin-bottom:24px;background:#fff;padding:16px;border-radius:10px;border:1px solid #eee}
+    .week-card{border:1px solid #ddd;border-radius:10px;margin-bottom:14px;overflow:hidden;background:#fff}
+    .wh{background:#f5f5f5;padding:10px 16px;font-weight:bold;font-size:14px;border-bottom:1px solid #ddd}
+    .camp-entry{padding:10px 16px;border-bottom:1px solid #eee}
+    .camp-entry:last-child{border-bottom:none}
+    .camp-name{font-weight:bold;color:#185FA5;font-size:13px}
+    .camp-detail{color:#666;font-size:12px;margin-top:3px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:bold;margin-left:6px;background:${c.bg};color:${c.text}}
+    .no-camps{color:#999;font-style:italic;padding:20px 0;text-align:center}
+    footer{margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;text-align:center}
+    @media(max-width:480px){body{padding:0 12px;margin-top:20px}}
+  </style></head><body>`;
+  body += `<div class="header-row">
+    <div class="avatar">${initials}</div>
+    <div><h1>${name}</h1><div class="sub">${role} — CISC 2026 Summer Staff${email ? `<br><a href="mailto:${email}" style="color:#185FA5">${email}</a>` : ''}</div></div>
+  </div>`;
+  const weeks = Object.keys(sched).map(Number).sort((a,b) => a-b);
+  if (!weeks.length) {
+    body += `<div class="no-camps">No camps assigned yet. Check back soon!</div>`;
+  } else {
+    weeks.forEach(w => {
+      body += `<div class="week-card"><div class="wh">Week ${w}</div>`;
+      sched[w].forEach(({ camp, roles, campKey }) => {
+        const roleLabels = roles.map(r => SG[r]).join(', ');
+        const cf = isConflicted(name, campKey, camp.week);
+        body += `<div class="camp-entry">
+          <div class="camp-name">${camp.program} — ${camp.location}<span class="badge">${roleLabels}</span>${cf ? `<span style="margin-left:6px;color:#A32D2D;font-size:11px">⚠ conflict</span>` : ''}</div>
+          <div class="camp-detail">${camp.venue} &bull; ${camp.dates} &bull; ${camp.days} &bull; ${camp.times}</div>
+        </div>`;
+      });
+      body += `</div>`;
+    });
+  }
+  body += `<footer>CISC 2026 Summer Soccer Camps &bull; Generated ${new Date().toLocaleDateString()}</footer></body></html>`;
+  const w = window.open('', '_blank'); w.document.write(body); w.document.close();
+}
+
+function notifyCamp(campKey) {
+  const camp = CAMPS.find(c => ck(c) === campKey); if (!camp) return;
+  const assigned = [];
+  ['directors','admins','coaches'].forEach(rt => {
+    const base = camp[rt === 'directors' ? 'directors' : rt === 'admins' ? 'admins' : 'coaches'];
+    const cnt = getCount(campKey, rt, base);
+    for (let i = 0; i < cnt; i++) { const n = getA(campKey, rt, i); if (n) assigned.push({ name: n, role: SG[rt] }); }
+  });
+  const withEmail = assigned.filter(x => S.emails[x.name]);
+  const noEmail = assigned.filter(x => !S.emails[x.name]);
+  if (!withEmail.length) {
+    alert('No email addresses found for staff at this camp.\nPlease import emails first using the "Import emails" button.');
+    return;
+  }
+  const to = withEmail.map(x => S.emails[x.name]).join(',');
+  const subject = encodeURIComponent(`CISC 2026 – Camp Assignment: ${camp.program} – ${camp.location}`);
+  const bodyText = encodeURIComponent(
+    `Hi team,\n\nYou are scheduled for the following CISC 2026 summer camp:\n\n` +
+    `Program: ${camp.program}\nLocation: ${camp.location} — ${camp.venue}\nDates: ${camp.dates}\nDays: ${camp.days}\nTimes: ${camp.times}\n\n` +
+    `Your role: See below\n\n` +
+    assigned.map(x => `  ${x.name} — ${x.role}`).join('\n') + '\n\n' +
+    (noEmail.length ? `Note: The following staff did not receive this email (no email on file): ${noEmail.map(x=>x.name).join(', ')}\n\n` : '') +
+    `Please reply with any questions.\n\nThanks,\nCISC Coaching Staff`
+  );
+  window.location.href = `mailto:${to}?subject=${subject}&body=${bodyText}`;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render() {
+  const allConflicts = getAllConflicts();
+  const conflictCount = Object.keys(allConflicts).length;
+  const weekConflicts = getConflictsForWeek(S.week);
+  const weekCamps = CAMPS.filter(c => c.week === S.week);
+  const sbStaff = S.staffList.filter(s => {
+    if (S.sbFilter && s.role !== S.sbFilter) return false;
+    return s.name.toLowerCase().includes(S.sbSearch.toLowerCase());
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  let h = `<div class="toolbar">
+    <span class="toolbar-title">CISC 2026 Staff Scheduler</span>
+    <div class="lock-badge ${S.locked ? 'locked' : 'unlocked'}" onclick="toggleLock()" title="${S.locked ? 'Click to unlock editing' : 'Click to lock'}">
+      ${S.locked
+        ? `<svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1" fill="currentColor"/><path d="M4 5V3.5a2 2 0 014 0V5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg> Locked`
+        : `<svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1" fill="currentColor"/><path d="M4 5V3.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg> Unlocked`
+      }
+    </div>
+    <div style="flex:1"></div>
+    <button class="tbtn" onclick="openStaffView()">Staff view</button>
+    <button class="tbtn" onclick="openAddStaff()">+ Add staff</button>
+    <button class="tbtn" onclick="openViewAll()">All staff</button>
+    <button class="tbtn" onclick="openImportEmails()">Import emails</button>
+    <div style="width:1px;background:var(--border-tertiary);height:16px;margin:0 2px"></div>
+    <button class="tbtn" onclick="exportCSV('week')">Export week</button>
+    <button class="tbtn" onclick="exportCSV('all')">Export all</button>
+    <button class="tbtn primary" onclick="doPrint('week')">Print week</button>
+    <button class="tbtn primary" onclick="doPrint('all')">Print all</button>
+  </div>`;
+
+  if (conflictCount > 0) {
+    const names = Object.keys(allConflicts).slice(0, 3).join(', ');
+    const more = conflictCount > 3 ? ` +${conflictCount - 3} more` : '';
+    h += `<div class="conflict-banner">
+      <svg width="13" height="13" viewBox="0 0 14 14"><path d="M7 1L13 12H1Z" stroke="#BA7517" stroke-width="1.2" fill="none"/><text x="7" y="10.5" text-anchor="middle" font-size="7" fill="#BA7517" font-weight="bold">!</text></svg>
+      <b>${conflictCount} conflict${conflictCount > 1 ? 's' : ''}</b> — ${e(names)}${more}
+      <button class="tbtn danger-btn" style="height:22px" onclick="openConflictView()">View all</button>
+    </div>`;
+  }
+
+  h += `<div class="legend">
+    ${Object.entries(RC).map(([k, v]) => `<div class="leg-item"><div class="leg-dot" style="background:${v.dot}"></div>${k}</div>`).join('')}
+    <div class="leg-item" style="margin-left:6px"><div style="width:8px;height:8px;border-radius:2px;background:#FCEBEB;border:1px solid #E24B4A;flex-shrink:0"></div>Conflict</div>
+  </div>`;
+
+  h += `<div class="main-layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Staff roster (${S.staffList.length})</div>
+      <input class="sidebar-search" placeholder="Search..." value="${e(S.sbSearch)}" oninput="sbSearch(this.value)">
+    </div>
+    <div class="sf-pills">
+      ${['','Part Time','Full Time','Administrator'].map(r =>
+        `<span class="sf-pill${S.sbFilter === r ? ' active' : ''}" onclick="sbFilter('${r}')">${r || 'All'}</span>`
+      ).join('')}
+    </div>
+    <div class="sidebar-list">
+      ${sbStaff.map(s => {
+        const c = RC[s.role] || RC['Part Time'];
+        const placed = assignedThisWeek(s.name);
+        const conflict = !!getAllConflicts()[s.name];
+        const count = campCount(s.name);
+        return `<div class="drag-chip${placed ? ' placed' : ''}${S.locked ? ' locked-mode' : ''}"
+          style="background:${c.bg};color:${c.text};border-color:${c.dot}30"
+          draggable="${S.locked ? 'false' : 'true'}"
+          ondragstart="dragFromSidebar(event,'${e(s.name)}','${s.role}')"
+          ondragend="dragEnd(event)"
+          onclick="viewStaffSchedule('${e(s.name)}')">
+          <div style="width:6px;height:6px;border-radius:50%;background:${c.dot};flex-shrink:0"></div>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(s.name)}</span>
+          ${count > 0 ? `<span class="cbadge">${count}</span>` : ''}
+          ${conflict ? `<span class="cfbadge">⚠</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="sidebar-hint">${S.locked ? '🔒 Unlock to edit & drag staff' : 'Drag to assign • Click to view schedule'}</div>
+  </div>
+  <div class="content-area">
+    <div class="week-tabs">${[1,2,3,4,5,6,7].map(w => {
+      const wc = Object.keys(getConflictsForWeek(w)).length;
+      return `<div class="wtab ${w === S.week ? 'active' : ''}" onclick="setWeek(${w})">Week ${w}${wc > 0 ? `<span class="wbadge">${wc}</span>` : ''}</div>`;
+    }).join('')}</div>
+    <div class="camps-area">`;
+
+  weekCamps.forEach(camp => {
+    const key = ck(camp);
+    const campHasConflict = Object.entries(weekConflicts).some(([name, keys]) => keys.includes(key));
+    const tc = TC[camp.program] || TC['Community Camp'];
+    h += `<div class="camp-card${campHasConflict ? ' has-conflict' : ''}">
+      <div class="camp-header">
+        <span class="type-badge" style="background:${tc.bg};color:${tc.text}">${e(camp.program)}</span>
+        <span class="camp-title">${e(camp.location)} — ${e(camp.venue)}</span>
+        <span class="camp-meta">${e(camp.dates)} &bull; ${e(camp.days)} &bull; ${e(camp.times)}</span>
+        <div class="camp-actions">
+          <button class="tbtn" style="height:24px;font-size:10px" onclick="notifyCamp('${key}')" title="Email assigned staff">✉ Notify</button>
+          <button class="tbtn" style="height:24px;font-size:10px" onclick="openCampView('${key}')">View roster</button>
+        </div>
+      </div>
+      <div class="camp-body">
+        ${renderRole(key, 'directors', getCount(key, 'directors', camp.directors), camp.week)}
+        ${renderRole(key, 'admins', getCount(key, 'admins', camp.admins), camp.week)}
+        ${renderRole(key, 'coaches', getCount(key, 'coaches', camp.coaches), camp.week)}
+        <div style="flex:1;min-width:90px">
+          <div class="role-label">Notes</div>
+          <textarea class="notes-ta" rows="3" placeholder="Notes..." onchange="saveNote('${key}_note',this.value)">${e(S.notes[key + '_note'] || '')}</textarea>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  h += `</div></div></div>`;
+  if (S.modal) h += renderModal();
+  document.getElementById('app').innerHTML = h;
+}
+
+function renderRole(key, rt, count, week) {
+  const singular = SG[rt];
+  const plural = rt === 'directors' ? 'Directors' : rt === 'admins' ? 'Administrators' : 'Coaches';
+  let slots = '';
+  for (let i = 0; i < count; i++) {
+    const name = getA(key, rt, i);
+    if (name) {
+      const c = sc(name);
+      const conflict = isConflicted(name, key, week);
+      slots += `<div class="filled-slot${conflict ? ' conflict-chip' : ''}${S.locked ? ' locked-mode' : ''}"
+        style="${conflict ? '' : `background:${c.bg};color:${c.text};border-color:${c.dot}20`}"
+        draggable="${S.locked ? 'false' : 'true'}"
+        ondragstart="dragFromSlot(event,'${key}','${rt}',${i},'${e(name)}')"
+        ondragend="dragEnd(event)"
+        ondragover="slotDragOver(event,'${key}','${rt}',${i},'${e(name)}')"
+        ondragleave="slotDragLeave(event)"
+        ondrop="dropOnFilled(event,'${key}','${rt}',${i})"
+        onclick="viewStaffSchedule('${e(name)}')"
+        title="${conflict ? '⚠ Assigned to multiple camps this week' : 'Click to view schedule'}">
+        <div style="width:6px;height:6px;border-radius:50%;background:${conflict ? '#E24B4A' : c.dot};flex-shrink:0"></div>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px">${e(name)}</span>
+        ${conflict ? '<span style="font-size:9px">⚠</span>' : ''}
+        <span class="rm${S.locked ? ' locked-rm' : ''}" onclick="${S.locked ? '' : `event.stopPropagation();removeStaff('${key}','${rt}',${i})`}">✕</span>
+      </div>`;
+    } else {
+      slots += `<div class="drop-slot"
+        ondragover="${S.locked ? '' : `emptyDragOver(event,'${key}','${rt}',${i})`}"
+        ondragleave="slotDragLeave(event)"
+        ondrop="${S.locked ? '' : `dropOnEmpty(event,'${key}','${rt}',${i})`}"
+        onclick="${S.locked ? '' : `openPicker('${key}','${rt}',${i},'${singular}')`}">
+        + ${singular}
+      </div>`;
+    }
+  }
+  slots += `<div class="slot-add-row">
+    <button class="add-btn" ${S.locked ? 'disabled' : ''} onclick="${S.locked ? '' : `addSlot('${key}','${rt}',${count})`}">+ spot</button>
+    ${count > 1 ? `<button class="add-btn" style="color:#A32D2D" ${S.locked ? 'disabled' : ''} onclick="${S.locked ? '' : `removeSlot('${key}','${rt}',${count})`}">− spot</button>` : ''}
+  </div>`;
+  return `<div class="role-section"><div class="role-label">${plural} (${count})</div><div class="staff-slots">${slots}</div></div>`;
+}
+
+function renderModal() {
+  const m = S.modal;
+
+  if (m.type === 'pin') {
+    const filled = S.pinBuffer.length;
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal" style="width:300px;align-items:center;gap:14px">
+      <h3 style="text-align:center">Enter PIN to unlock</h3>
+      <div class="pin-dots">${[0,1,2,3].map(i => `<div class="pin-dot${i < filled ? ' filled' : ''}"></div>`).join('')}</div>
+      ${S.pinError ? `<div class="pin-error">${S.pinError}</div>` : ''}
+      <div class="pin-pad" style="width:100%">
+        ${[1,2,3,4,5,6,7,8,9,'','0','⌫'].map(k =>
+          `<div class="pin-key" onclick="pinKey('${k}')" style="${k === '' ? 'visibility:hidden' : ''}">${k}</div>`
+        ).join('')}
+      </div>
+      <div class="mactions" style="width:100%"><button onclick="closeModal()">Cancel</button></div>
+    </div></div>`;
+  }
+
+  if (m.type === 'picker') {
+    const search = m.search || ''; const rf = m.rf || '';
+    const filtered = S.staffList.filter(s => {
+      if (rf && s.role !== rf) return false;
+      return s.name.toLowerCase().includes(search.toLowerCase());
+    });
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal">
+      <h3>Assign ${m.label}</h3>
+      <input class="msearch" placeholder="Search staff..." value="${e(search)}" oninput="updateSearch(this.value)" autofocus>
+      <div class="role-pills">
+        ${['','Part Time','Full Time','Administrator'].map(r =>
+          `<span class="role-pill${rf === r ? ' active' : ''}" onclick="setRF('${r}')">${r || 'All'}</span>`
+        ).join('')}
+      </div>
+      <div class="mlist">
+        ${filtered.map(s => {
+          const c = RC[s.role] || RC['Part Time'];
+          const cnt = campCount(s.name);
+          const alreadyThisWeek = Object.entries(S.assignments).some(([k, n]) => {
+            if (n !== s.name) return false;
+            const p = k.split('__');
+            const camp = CAMPS.find(c => ck(c) === p[0]);
+            return camp && camp.week === S.week && p[0] !== m.campKey;
+          });
+          return `<div class="sopt" style="${alreadyThisWeek ? 'background:#FFF8ED' : ''}" onclick="assignStaff('${e(s.name)}')">
+            <div class="sdot" style="background:${c.dot}"></div>
+            <span style="flex:1">${e(s.name)}</span>
+            ${cnt > 0 ? `<span style="font-size:10px;background:${c.bg};color:${c.text};border-radius:20px;padding:1px 5px">${cnt} camp${cnt !== 1 ? 's' : ''}</span>` : ''}
+            ${alreadyThisWeek ? `<span style="font-size:10px;background:#FAEEDA;color:#633806;border-radius:20px;padding:1px 5px">⚠ wk${S.week}</span>` : ''}
+            <span style="font-size:10px;color:var(--text-tertiary)">${s.role}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mactions"><button onclick="closeModal()">Cancel</button></div>
+    </div></div>`;
+  }
+
+  if (m.type === 'staffschedule') {
+    const sched = getStaffSchedule(m.name);
+    const role = getRole(m.name);
+    const c = RC[role] || RC['Part Time'];
+    const totalCamps = Object.values(sched).reduce((a, b) => a + b.length, 0);
+    const email = S.emails[m.name];
+    let rows = '';
+    for (let w = 1; w <= 7; w++) {
+      const camps = sched[w] || []; if (!camps.length) continue;
+      rows += `<div class="week-row"><div class="week-row-title">Week ${w}</div>
+        ${camps.map(({ camp, roles, campKey }) => {
+          const cf = isConflicted(m.name, campKey, camp.week);
+          return `<div class="camp-row">
+            <div style="width:6px;height:6px;border-radius:50%;background:${cf ? '#E24B4A' : c.dot};flex-shrink:0"></div>
+            <span>${e(camp.program)} — ${e(camp.location)}</span>
+            <span style="color:var(--text-tertiary)">${roles.map(r => SG[r]).join(', ')}</span>
+            ${cf ? `<span class="conflict-tag">⚠</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal" style="width:430px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div class="avatar" style="background:${c.bg};color:${c.text};cursor:pointer" onclick="openStaffPage('${e(m.name)}')" title="Open full schedule page">
+          ${m.name.split(' ').map(x => x[0]).slice(0, 2).join('')}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:600">${e(m.name)}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${role} &bull; ${totalCamps} camp${totalCamps !== 1 ? 's' : ''} assigned</div>
+          ${email ? `<div style="font-size:11px;color:#185FA5">${email}</div>` : `<div style="font-size:11px;color:var(--text-tertiary)">No email on file</div>`}
+        </div>
+        <button class="tbtn primary" style="height:26px;font-size:10px" onclick="openStaffPage('${e(m.name)}')">Full schedule ↗</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;max-height:360px;overflow-y:auto">
+        ${rows || '<div style="font-size:12px;color:var(--text-tertiary);padding:10px">No camps assigned yet.</div>'}
+      </div>
+      <div class="mactions"><button onclick="closeModal()">Close</button></div>
+    </div></div>`;
+  }
+
+  if (m.type === 'campview') {
+    const camp = CAMPS.find(c => ck(c) === m.campKey); if (!camp) return '';
+    const tc = TC[camp.program] || TC['Community Camp'];
+    const allStaff = [];
+    ['directors','admins','coaches'].forEach(rt => {
+      const base = camp[rt === 'directors' ? 'directors' : rt === 'admins' ? 'admins' : 'coaches'];
+      const cnt = getCount(m.campKey, rt, base);
+      for (let i = 0; i < cnt; i++) { const n = getA(m.campKey, rt, i); if (n) allStaff.push({ name: n, role: SG[rt] }); }
+    });
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal wide">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="type-badge" style="background:${tc.bg};color:${tc.text};font-size:11px;padding:3px 8px">${e(camp.program)}</span>
+        <span style="font-size:14px;font-weight:600">${e(camp.location)} — ${e(camp.venue)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-secondary)">${e(camp.dates)} &bull; ${e(camp.days)} &bull; ${e(camp.times)}</div>
+      <div style="border:0.5px solid var(--border-tertiary);border-radius:var(--radius-md);overflow:hidden;max-height:360px;overflow-y:auto">
+        ${allStaff.length === 0
+          ? '<div style="padding:16px;font-size:12px;color:var(--text-tertiary)">No staff assigned yet.</div>'
+          : allStaff.map(x => {
+            const c = sc(x.name);
+            const email = S.emails[x.name];
+            return `<div class="staff-card-row" onclick="closeModal();viewStaffSchedule('${e(x.name)}')">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;background:${c.bg};color:${c.text}">${x.name.split(' ').map(z => z[0]).slice(0,2).join('')}</div>
+              <div style="flex:1"><div style="font-size:12px;font-weight:500">${e(x.name)}</div>${email ? `<div style="font-size:10px;color:#185FA5">${email}</div>` : `<div style="font-size:10px;color:var(--text-tertiary)">No email</div>`}</div>
+              <span style="font-size:10px;padding:2px 6px;border-radius:20px;background:${c.bg};color:${c.text}">${x.role}</span>
+            </div>`;
+          }).join('')
+        }
+      </div>
+      <div class="mactions">
+        <button onclick="closeModal()">Close</button>
+        <button class="success" onclick="closeModal();notifyCamp('${m.campKey}')">✉ Email all staff</button>
+      </div>
+    </div></div>`;
+  }
+
+  if (m.type === 'importemails') {
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal wide">
+      <h3>Import staff emails</h3>
+      <div style="font-size:12px;color:var(--text-secondary)">Paste a list with <strong>Name, Email</strong> on each line. Names must match exactly.</div>
+      <div class="import-example">Ale Marin, ale@cisc.com<br>Kevin Vasquez, kevin@cisc.com</div>
+      <textarea id="email-csv" rows="7" style="font-size:11px;padding:7px 9px;border:0.5px solid var(--border-secondary);border-radius:var(--radius-md);width:100%;font-family:monospace;background:var(--bg-primary);color:var(--text-primary);resize:vertical" placeholder="Paste Name, Email pairs here..."></textarea>
+      <div id="email-result" style="font-size:11px;color:var(--text-secondary);min-height:16px"></div>
+      <div style="font-size:12px;font-weight:600">Current emails on file (${Object.keys(S.emails).length})</div>
+      <div class="email-list">
+        ${Object.keys(S.emails).length === 0
+          ? '<div style="padding:10px;font-size:11px;color:var(--text-tertiary)">No emails imported yet.</div>'
+          : Object.entries(S.emails).map(([name, email]) =>
+            `<div class="email-row">
+              <span style="flex:1">${e(name)}</span>
+              <span style="color:#185FA5">${e(email)}</span>
+              <span style="color:#A32D2D;cursor:pointer;margin-left:6px" onclick="deleteEmail('${e(name)}')">✕</span>
+            </div>`
+          ).join('')
+        }
+      </div>
+      <div class="mactions">
+        <button onclick="closeModal()">Done</button>
+        <button class="primary" onclick="processEmailCSV()">Import</button>
+      </div>
+    </div></div>`;
+  }
+
+  if (m.type === 'conflictview') {
+    const all = getAllConflicts();
+    let rows = '';
+    for (const [name, weekInfos] of Object.entries(all)) {
+      const c = sc(name);
+      rows += `<div style="padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid #E24B4A;background:#FCEBEB;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:600;color:#791F1F;display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${c.dot}"></div>${e(name)}
+          <span style="font-size:10px;background:#E24B4A;color:#fff;border-radius:20px;padding:1px 6px">${weekInfos.length} conflict${weekInfos.length > 1 ? 's' : ''}</span>
+          <button class="tbtn" style="height:20px;font-size:10px;margin-left:auto" onclick="closeModal();viewStaffSchedule('${e(name)}')">View</button>
+        </div>
+        ${weekInfos.map(wi => {
+          const ns = wi.campKeys.map(k => { const c2 = CAMPS.find(c => ck(c) === k); return c2 ? c2.location : '?'; }).join(' & ');
+          return `<div style="font-size:11px;color:#A32D2D;padding-left:14px">Week ${wi.week}: ${e(ns)}</div>`;
+        }).join('')}
+      </div>`;
+    }
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal" style="width:430px">
+      <h3>All scheduling conflicts</h3>
+      <div style="overflow-y:auto;max-height:400px;display:flex;flex-direction:column;gap:0">${rows}</div>
+      <div class="mactions"><button onclick="closeModal()">Close</button></div>
+    </div></div>`;
+  }
+
+  if (m.type === 'addstaff') {
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal">
+      <h3>Add new staff member</h3>
+      <input id="nn" placeholder="Full name" class="msearch">
+      <select id="nr" class="msearch" style="margin-top:5px">
+        <option value="Part Time">Part Time</option>
+        <option value="Full Time">Full Time</option>
+        <option value="Administrator">Administrator</option>
+      </select>
+      <div class="mactions">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="primary" onclick="confirmAdd()">Add staff</button>
+      </div>
+    </div></div>`;
+  }
+
+  if (m.type === 'viewall') {
+    const rf = m.rf || ''; const search = m.search || '';
+    const shown = S.staffList.filter(s => {
+      if (rf && s.role !== rf) return false;
+      return s.name.toLowerCase().includes(search.toLowerCase());
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal" style="width:420px">
+      <h3>All staff (${S.staffList.length})</h3>
+      <input class="msearch" placeholder="Search..." value="${e(search)}" oninput="updateVASearch(this.value)">
+      <div class="role-pills">
+        ${['','Part Time','Full Time','Administrator'].map(r =>
+          `<span class="role-pill${rf === r ? ' active' : ''}" onclick="setVARF('${r}')">${r || 'All'}</span>`
+        ).join('')}
+      </div>
+      <div class="mlist">
+        ${shown.map(s => {
+          const c = RC[s.role] || RC['Part Time'];
+          const cnt = campCount(s.name);
+          return `<div class="sopt" style="justify-content:space-between" onclick="viewStaffSchedule('${e(s.name)}')">
+            <div style="display:flex;align-items:center;gap:7px"><div class="sdot" style="background:${c.dot}"></div><span>${e(s.name)}</span></div>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${cnt > 0 ? `<span style="font-size:10px;background:${c.bg};color:${c.text};border-radius:20px;padding:1px 5px">${cnt} camp${cnt !== 1 ? 's' : ''}</span>` : ''}
+              <span style="font-size:10px;color:var(--text-tertiary)">${s.role}</span>
+              <span style="font-size:10px;color:#A32D2D;cursor:pointer" onclick="event.stopPropagation();rmStaffMember('${e(s.name)}')">remove</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mactions"><button onclick="closeModal()">Close</button></div>
+    </div></div>`;
+  }
+
+  if (m.type === 'staffview') {
+    const campMap = {};
+    for (const [k, n] of Object.entries(S.assignments)) {
+      if (!n) continue; const p = k.split('__'); const c = CAMPS.find(x => ck(x) === p[0]); if (!c) continue;
+      if (!campMap[n]) campMap[n] = new Set(); campMap[n].add(p[0]);
+    }
+    const search = m.search || '';
+    const names = S.staffList.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name));
+    return `<div class="overlay" onclick="overlayClose(event)"><div class="modal" style="width:430px">
+      <h3>Staff overview</h3>
+      <input class="msearch" placeholder="Search..." value="${e(search)}" oninput="updateSVSearch(this.value)">
+      <div class="mlist" style="max-height:400px">
+        ${names.map(s => {
+          const c = RC[s.role] || RC['Part Time'];
+          const cnt = (campMap[s.name] || new Set()).size;
+          const cf = !!getAllConflicts()[s.name];
+          return `<div class="sopt" onclick="closeModal();viewStaffSchedule('${e(s.name)}')">
+            <div class="sdot" style="background:${c.dot}"></div>
+            <span style="flex:1">${e(s.name)}</span>
+            ${cnt > 0 ? `<span style="font-size:10px;background:${c.bg};color:${c.text};border-radius:20px;padding:1px 5px">${cnt} camp${cnt !== 1 ? 's' : ''}</span>` : '<span style="font-size:10px;color:var(--text-tertiary)">unassigned</span>'}
+            ${cf ? `<span style="font-size:10px;background:#FCEBEB;color:#A32D2D;border-radius:20px;padding:1px 5px">⚠</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mactions"><button onclick="closeModal()">Close</button></div>
+    </div></div>`;
+  }
+  return '';
+}
+
+// ── Event handlers ─────────────────────────────────────────────────────────────
+function overlayClose(e) { if (e.target === e.currentTarget) closeModal(); }
+
+window.toggleLock = () => {
+  if (S.locked) { S.modal = { type: 'pin' }; S.pinBuffer = ''; S.pinError = ''; render(); }
+  else { S.locked = true; render(); }
+};
+window.pinKey = k => {
+  if (k === '⌫') { S.pinBuffer = S.pinBuffer.slice(0, -1); S.pinError = ''; render(); return; }
+  if (k === '') return;
+  S.pinBuffer += String(k);
+  if (S.pinBuffer.length === 4) {
+    if (S.pinBuffer === PIN) { S.locked = false; S.modal = null; S.pinBuffer = ''; S.pinError = ''; render(); }
+    else { S.pinError = 'Incorrect PIN — try again.'; S.pinBuffer = ''; render(); }
+    return;
+  }
+  render();
+};
+window.setWeek = w => { S.week = w; render(); };
+window.sbSearch = v => { S.sbSearch = v; render(); };
+window.sbFilter = v => { S.sbFilter = v; render(); };
+window.saveNote = (k, v) => { S.notes[k] = v; saveState(); };
+window.addSlot = (k, rt, n) => { setCount(k, rt, n + 1); render(); };
+window.removeSlot = (k, rt, n) => { if (n <= 1) return; delA(k, rt, n - 1); setCount(k, rt, n - 1); render(); };
+window.removeStaff = (k, rt, i) => { delA(k, rt, i); render(); };
+window.openPicker = (k, rt, idx, label) => { S.modal = { type: 'picker', campKey: k, rt, idx, label, search: '', rf: '' }; render(); };
+window.assignStaff = name => { const m = S.modal; setA(m.campKey, m.rt, m.idx, name); S.modal = null; render(); };
+window.updateSearch = v => { S.modal.search = v; render(); };
+window.setRF = r => { S.modal.rf = r; render(); };
+window.closeModal = () => { S.modal = null; render(); };
+window.openAddStaff = () => { S.modal = { type: 'addstaff' }; render(); };
+window.confirmAdd = () => {
+  const n = document.getElementById('nn').value.trim();
+  const r = document.getElementById('nr').value;
+  if (!n) return;
+  S.staffList.push({ name: n, role: r }); saveState(); S.modal = null; render();
+};
+window.rmStaffMember = name => {
+  if (!confirm('Remove ' + name + ' from staff list?')) return;
+  S.staffList = S.staffList.filter(s => s.name !== name); saveState(); render();
+};
+window.openViewAll = () => { S.modal = { type: 'viewall', search: '', rf: '' }; render(); };
+window.updateVASearch = v => { S.modal.search = v; render(); };
+window.setVARF = r => { S.modal.rf = r; render(); };
+window.viewStaffSchedule = name => { S.modal = { type: 'staffschedule', name }; render(); };
+window.openConflictView = () => { S.modal = { type: 'conflictview' }; render(); };
+window.openStaffView = () => { S.modal = { type: 'staffview', search: '' }; render(); };
+window.updateSVSearch = v => { S.modal.search = v; render(); };
+window.openCampView = key => { S.modal = { type: 'campview', campKey: key }; render(); };
+window.openImportEmails = () => { S.modal = { type: 'importemails' }; render(); };
+window.deleteEmail = name => { delete S.emails[name]; saveState(); render(); };
+window.openStaffPage = openStaffPage;
+window.notifyCamp = notifyCamp;
+window.exportCSV = exportCSV;
+window.doPrint = doPrint;
+
+window.processEmailCSV = () => {
+  const raw = document.getElementById('email-csv').value.trim();
+  if (!raw) { document.getElementById('email-result').textContent = 'Nothing to import.'; return; }
+  let imported = 0, skipped = 0;
+  raw.split('\n').filter(l => l.trim()).forEach(line => {
+    const parts = line.split(',');
+    if (parts.length < 2) { skipped++; return; }
+    const name = parts[0].trim(); const email = parts.slice(1).join(',').trim();
+    if (!name || !email) { skipped++; return; }
+    S.emails[name] = email; imported++;
+  });
+  saveState();
+  document.getElementById('email-result').textContent = `✓ Imported ${imported} email${imported !== 1 ? 's' : ''}${skipped > 0 ? `, ${skipped} skipped` : ''}.`;
+};
+
+// ── Drag & Drop ────────────────────────────────────────────────────────────────
+window.dragFromSidebar = (ev, name) => {
+  if (S.locked) return;
+  S.drag = { source: 'sidebar', name };
+  ev.dataTransfer.effectAllowed = 'copy'; ev.dataTransfer.setData('text/plain', name);
+  setTimeout(() => { if (ev.target) ev.target.classList.add('dragging'); }, 0);
+};
+window.dragFromSlot = (ev, k, rt, idx, name) => {
+  if (S.locked) return;
+  S.drag = { source: 'slot', campKey: k, rt, idx, name };
+  ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', name);
+  setTimeout(() => { if (ev.target) ev.target.classList.add('dragging'); }, 0);
+};
+window.dragEnd = ev => {
+  S.drag = null;
+  document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.drag-over,.drag-over-conflict').forEach(el => { el.classList.remove('drag-over', 'drag-over-conflict'); });
+};
+window.emptyDragOver = (ev, k, rt, idx) => {
+  if (S.locked) return; ev.preventDefault();
+  const d = S.drag; if (!d) return;
+  const camp = CAMPS.find(c => ck(c) === k);
+  const hasConflict = camp && Object.entries(S.assignments).some(([sk2, n]) => {
+    if (n !== d.name) return false;
+    const p = sk2.split('__'); const c2 = CAMPS.find(c => ck(c) === p[0]);
+    return c2 && c2.week === camp.week && p[0] !== k;
+  });
+  ev.currentTarget.classList.remove('drag-over', 'drag-over-conflict');
+  ev.currentTarget.classList.add(hasConflict ? 'drag-over-conflict' : 'drag-over');
+  ev.dataTransfer.dropEffect = 'move';
+};
+window.slotDragOver = (ev, k, rt, idx, cur) => {
+  if (S.locked) return; ev.preventDefault();
+  const d = S.drag; if (!d || d.name === cur) return;
+  ev.currentTarget.classList.add('drag-over'); ev.dataTransfer.dropEffect = 'move';
+};
+window.slotDragLeave = ev => { ev.currentTarget.classList.remove('drag-over', 'drag-over-conflict'); };
+window.dropOnEmpty = (ev, k, rt, idx) => {
+  if (S.locked) return; ev.preventDefault();
+  const d = S.drag; if (!d) return;
+  if (d.source === 'slot') delA(d.campKey, d.rt, d.idx);
+  setA(k, rt, idx, d.name); S.drag = null; render();
+};
+window.dropOnFilled = (ev, k, rt, idx) => {
+  if (S.locked) return; ev.preventDefault();
+  const d = S.drag; if (!d) return;
+  const existing = getA(k, rt, idx);
+  if (d.source === 'slot') { setA(d.campKey, d.rt, d.idx, existing || null); if (!existing) delA(d.campKey, d.rt, d.idx); }
+  setA(k, rt, idx, d.name); S.drag = null; render();
+};
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+loadState();
+render();
+</script>
+</body>
+</html>
